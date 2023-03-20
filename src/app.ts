@@ -1,14 +1,19 @@
-import express, { Request, Response } from 'express'
+import { verifyExistMovie } from './middlewares/verifyExistMovie'
+import { MoviesController } from './controllers/MoviesController'
+import { startDatabase } from './database/index'
+import express from 'express'
 
 const app = express()
 app.use(express.json())
 
-app.get('/', (req: Request, res: Response) => {
-  return res.status(200).send('Hello World')
-})
+const moviesController = new MoviesController()
 
-const port = 3333
+app.get('/movies', moviesController.handle)
+app.post('/movies', verifyExistMovie, moviesController.create)
+app.delete('/movies/:movieId', moviesController.delete)
+app.patch('/movies/:movieId', moviesController.update)
 
-app.listen(port, () => {
-  console.log(`Server running on port ${port}`)
+app.listen(process.env.PORT_APPLICATION, async () => {
+  startDatabase()
+  console.log('App is running port ' + process.env.PORT_APPLICATION)
 })
