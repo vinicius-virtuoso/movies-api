@@ -6,32 +6,47 @@ import { QueryConfig } from 'pg'
 
 export class MoviesController {
   async handle(req: Request, res: Response) {
-    const { page = 1, limit = 2 } = req.query
+    const { page = 1, limit = 2, sort, order } = req.query
     const perPage = Number(limit)
-    const pageQuery = Number(page)
+    const pageOffset = Number(page)
 
     const queryString = `
-      SELECT * FROM "movies" ORDER BY "name" ASC
+      SELECT * FROM "movies" 
+      ${sort && order && `ORDER BY ${sort} ${order}`}
       OFFSET $1 LIMIT $2;
     `
 
     const queryConfig: QueryConfig = {
       text: queryString,
       values: [
-        perPage * (pageQuery - 1) > 0 ? perPage * (pageQuery - 1) : 1,
+        perPage * (pageOffset - 1) > 0 ? perPage * (pageOffset - 1) : 1,
         perPage > 0 ? perPage : 2,
       ],
     }
 
-    const previous = `${process.env.URL_API}movies?page=${
-      pageQuery - 1 <= 0 ? 1 : pageQuery - 1
-    }&limit=${perPage}`
-    const next = `${process.env.URL_API}movies?page=${
-      pageQuery + 1 > 0 ? pageQuery + 1 : 2
-    }&limit=${perPage}`
-
     const queryResult = await client.query(queryConfig)
     const movies = queryResult.rows
+
+    const queryString2 = `
+      SELECT COUNT(*) FROM "movies";
+    `
+
+    const queryResult2 = await client.query(queryString2)
+    const moviesCount = queryResult2.rows[0].count
+
+    const nextPageCount = moviesCount / perPage
+
+    const previous =
+      pageOffset - 1 < 1
+        ? null
+        : `${process.env.URL_API}movies?page=${
+            pageOffset - 1 > nextPageCount ? nextPageCount : pageOffset - 1
+          }&limit=${perPage}`
+
+    const next =
+      pageOffset < nextPageCount
+        ? `${process.env.URL_API}movies?page=${pageOffset + 1}&limit=${perPage}`
+        : null
 
     return res
       .status(200)
@@ -70,9 +85,13 @@ export class MoviesController {
       values: [movieId],
     }
 
-    await client.query(queryConfig)
+    const result = await client.query(queryConfig)
 
-    return res.status(200).json([])
+    if (result.rowCount <= 0) {
+      return res.status(404).json({ message: 'Movie not found.' })
+    }
+
+    return res.status(204).json([])
   }
 
   async update(req: Request, res: Response) {
