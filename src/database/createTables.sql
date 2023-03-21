@@ -10,6 +10,6 @@ CREATE TABLE IF NOT EXISTS
 ALTER TABLE
   public.movies
 ADD
-  CONSTRAINT untitled_table_pkey PRIMARY KEY (id)
+  CONSTRAINT untitled_table_pkey PRIMARY KEY (id);
   
   
