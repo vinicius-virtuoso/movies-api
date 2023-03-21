@@ -19,7 +19,7 @@ export class MoviesController {
     const queryConfig: QueryConfig = {
       text: queryString,
       values: [
-        perPage * (pageOffset - 1) > 0 ? perPage * (pageOffset - 1) : 1,
+        perPage * pageOffset - 1 > 0 ? perPage * (pageOffset - 1) : 1,
         perPage > 0 ? perPage : 2,
       ],
     }
@@ -34,7 +34,7 @@ export class MoviesController {
     const queryResult2 = await client.query(queryString2)
     const moviesCount = queryResult2.rows[0].count
 
-    const nextPageCount = moviesCount / perPage
+    const nextPageCount = Math.floor(moviesCount / perPage)
 
     const previous =
       pageOffset - 1 < 1
@@ -48,9 +48,13 @@ export class MoviesController {
         ? `${process.env.URL_API}movies?page=${pageOffset + 1}&limit=${perPage}`
         : null
 
-    return res
-      .status(200)
-      .json({ page_previous: previous, page_next: next, movies })
+    return res.status(200).json({
+      page_previous: previous,
+      page_next: next,
+      count_movies: Number(moviesCount),
+      count_pages: Number(nextPageCount),
+      movies,
+    })
   }
 
   async create(req: Request, res: Response) {
